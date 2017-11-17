@@ -22,7 +22,8 @@
  
  REVISION HISTORY:
  
- 0.02  (2017-xx-xx) Initial public release
+ 0.03  (2017-11-17) Fixed clean return on three or less vertices and triangles
+ 0.02  (2017-11-16) Initial public release
  */
 
 #ifndef sts_vertex_cache_optimizer_h
@@ -93,11 +94,13 @@ void stsvco_optimize( unsigned int *indices, const unsigned int numIndices, cons
         bool drawn;
     };
     
+    assert( !(numIndices % 3) && "Index input has to be triangles" );
+    
+    if( numIndices <= 3 || numVertices <= 3) return;
+    
     cacheVert   vertices[ numVertices ];
     const int   numTriangles = numIndices/3;
     cacheTris   triangles[ numTriangles ];
-    
-    assert( !(numIndices % 3) && "Index input has to be triangles" );
     
     for( int v = 0; v < numVertices; ++v) {
         vertices[v].numAdjecentTris = 0;

@@ -1,4 +1,4 @@
-/* sts_vertex_cache_optimizer - v0.02 - public domain triangle index optimizer
+/* sts_vertex_cache_optimizer - v0.04 - public domain triangle index optimizer
  no warranty implied; use at your own risk
  
  I have only tested this library with gcc and clang. If you successfully or
@@ -46,7 +46,14 @@
 // The algorithm is fast and runs in linear time, and is within a few percentages of the best known alternative
 // algorithm (Tom Forsyth´s words).
 //
+// Define STS_VERTEX_CACHE_OPTIMIZER_IMPLEMENTATION in *exactly* one source file before including the header.
+// You can also define STS_VERTEX_CACHE_OPTIMIZER_STATIC before including to make all functions static.
+//
 // Example:
+//  #define STS_VERTEX_CACHE_OPTIMIZER_IMPLEMENTATION
+//  #include "sts_vertex_cache_optimizer.h"
+//
+//  ...
 //
 //  float ACMR_before = stsvco_compute_ACMR( indices, numIndices, 8 );
 //  stsvco_optimize( indices, numIndices, numVertices );
@@ -57,14 +64,21 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+    
+#ifdef STS_VERTEX_CACHE_OPTIMIZER_STATIC
+#define STSTVCOF static
+#else
+#define STSTVCOF extern
+#endif
 
 // Function that does the optimization.
 // NOTE: numVertices has to equal the MAX vertex index in the indices.
-extern void stsvco_optimize( unsigned int *indices, const unsigned int numIndices, const unsigned int numVertices, const int cacheSize = 32 );
+STSTVCOF void stsvco_optimize( unsigned int *indices, const unsigned int numIndices, const unsigned int numVertices, const int cacheSize = 32 );
 
 // Function that computes ACMR (Average Cache Miss Ratio) for a given index list and cache size.
-// The function returns the average number of cache misses per triangle.
-extern float stsvco_compute_ACMR( const unsigned int *indices, const unsigned int numIndices, const unsigned int cacheSize );
+// The function returns the average number of cache misses per triangle, used for measuring
+// the performance of the cache optimzation (not required to do the actual optimization).
+STSTVCOF float stsvco_compute_ACMR( const unsigned int *indices, const unsigned int numIndices, const unsigned int cacheSize );
 
 #ifdef __cplusplus
 };
@@ -79,11 +93,11 @@ extern float stsvco_compute_ACMR( const unsigned int *indices, const unsigned in
 #include <stdlib.h>
 
 // Computes the score for a vertex with numTris using the vertex
-float stsvco_valenceScore( const int numTris ) {
+STSTVCOF float stsvco_valenceScore( const int numTris ) {
     return 2*powf( numTris, -.5f );
 }
 
-void stsvco_optimize( unsigned int *indices, const unsigned int numIndices, const unsigned int numVertices, const int cacheSize ) {
+STSTVCOF void stsvco_optimize( unsigned int *indices, const unsigned int numIndices, const unsigned int numVertices, const int cacheSize ) {
     
     struct vertex {
         int numAdjecentTris;

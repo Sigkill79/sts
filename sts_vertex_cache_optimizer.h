@@ -22,7 +22,8 @@
  
  REVISION HISTORY:
  
- 0.03  (2017-11-17) Fixed clean return on three or less vertices and triangles
+ 0.04  (2017-11-17) Fixed MSVC compatibility
+ 0.03  (2017-11-17) Fixed clean return on three or less vertices and/or triangles
  0.02  (2017-11-16) Initial public release
  */
 
@@ -74,22 +75,24 @@ extern float stsvco_compute_ACMR( const unsigned int *indices, const unsigned in
 #ifdef STS_VERTEX_CACHE_OPTIMIZER_IMPLEMENTATION
 
 #include <assert.h>
+#include <math.h>
+#include <stdlib.h>
 
 // Computes the score for a vertex with numTris using the vertex
-const float stsvco_valenceScore( const int numTris ) {
+float stsvco_valenceScore( const int numTris ) {
     return 2*powf( numTris, -.5f );
 }
 
 void stsvco_optimize( unsigned int *indices, const unsigned int numIndices, const unsigned int numVertices, const int cacheSize ) {
     
-    struct cacheVert {
+    struct vertex {
         int numAdjecentTris;
         int numTrisLeft;
         int triListIndex;
         int cacheIndex;
     };
     
-    struct cacheTris {
+    struct triangle {
         int vertices[3];
         bool drawn;
     };
@@ -98,9 +101,12 @@ void stsvco_optimize( unsigned int *indices, const unsigned int numIndices, cons
     
     if( numIndices <= 3 || numVertices <= 3) return;
     
-    cacheVert   vertices[ numVertices ];
+    vertex   *vertices = (vertex*)malloc( numVertices*sizeof(vertex) ) ;
+    assert( vertices && "Out of memory when allocating vertices");
+    
     const int   numTriangles = numIndices/3;
-    cacheTris   triangles[ numTriangles ];
+    triangle   *triangles = (triangle*)malloc( numTriangles*sizeof(triangle) );
+    assert( triangles && "Out of memory when allocating triangles");
     
     for( int v = 0; v < numVertices; ++v) {
         vertices[v].numAdjecentTris = 0;
@@ -125,7 +131,7 @@ void stsvco_optimize( unsigned int *indices, const unsigned int numIndices, cons
     }
     
     const int numVertToTri = vertices[numVertices-1].triListIndex+vertices[numVertices-1].numAdjecentTris;
-    unsigned int vertToTri[ numVertToTri ];
+    unsigned int *vertToTri = (unsigned int*)malloc( numVertToTri * sizeof( unsigned int) );
     
     for(int t = 0; t < numTriangles; ++t) {
         for(int v = 0; v < 3; ++v) {
@@ -138,8 +144,8 @@ void stsvco_optimize( unsigned int *indices, const unsigned int numIndices, cons
     
     // Make LRU cache
     const int   LRUCacheSize = cacheSize;
-    int         LRUCache[ LRUCacheSize ];
-    float       scoring[ LRUCacheSize ];
+    int         *LRUCache = (int*)malloc( LRUCacheSize* sizeof( int ) );
+    float       *scoring = (float*)malloc( LRUCacheSize*sizeof(float ) );
     
     for(int i = 0; i < LRUCacheSize; ++i) {
         LRUCache[i] = -1;
@@ -257,12 +263,19 @@ void stsvco_optimize( unsigned int *indices, const unsigned int numIndices, cons
         
         triangles[ triangleToDraw ].drawn = true;
     }
+    
+    // Memory cleanup
+    free( scoring );
+    free( LRUCache );
+    free( vertToTri );
+    free( vertices );
+    free( triangles );
 };
 
 float stsvco_compute_ACMR( const unsigned int *indices, const unsigned int numIndices, const unsigned int cacheSize ) {
     
     unsigned int numCacheMisses = 0;
-    int cache[ cacheSize ];
+    int *cache = (int*)malloc( cacheSize*sizeof(int) );
     
     assert( !(numIndices % 3) && "Index input has to be triangles" );
     
@@ -285,6 +298,8 @@ float stsvco_compute_ACMR( const unsigned int *indices, const unsigned int numIn
             cache[0] = index;
         }
     }
+    
+    free( cache );
     
     return (float)numCacheMisses/(float)(numIndices/3);
 };
